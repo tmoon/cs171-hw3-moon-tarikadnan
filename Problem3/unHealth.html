@@ -3,7 +3,7 @@
 <html>
 <head>
     <title></title>
-    <script src="../libs/d3.v3.min.js"></script>
+    <script src="./d3.v3.min.js"></script>
     <style>
         .axis path,
         .axis line {
@@ -36,6 +36,13 @@
 
         .detailPath {
             stroke-width:2;
+            clip-path: url(#clip);
+        }
+
+
+        .area {
+          fill: steelblue;
+          clip-path: url(#clip);
         }
 
         .detailArea {

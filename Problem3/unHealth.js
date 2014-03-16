@@ -1,160 +1,149 @@
-var bbDetail, bbOverview, dataSet, svg;
+var margin = {top: 150, right: 50, bottom: 50, left: 50},
+    margin2 = {top: 10, right: 50, bottom: 400, left: 50},
+    width = 960 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom,
+    height2 = 500 - margin2.top - margin2.bottom;
 
-var margin = {
-    top: 50,
-    right: 100,
-    bottom: 50,
-    left: 50
-};
+var x = d3.time.scale().range([0, width]),
+    x2 = d3.time.scale().range([0, width]),
+    y = d3.scale.linear().range([height, 0]),
+    y2 = d3.scale.linear().range([height2,0]);
 
-var width = 960 - margin.left - margin.right;
+var xAxis = d3.svg.axis().scale(x).orient("bottom"),
+    xAxis2 = d3.svg.axis().scale(x2).orient("bottom"),
+    yAxis = d3.svg.axis().scale(y).orient("left");
+    yAxis2 = d3.svg.axis().scale(y2).orient("left");
 
-var height = 800 - margin.bottom - margin.top;
+var brush = d3.svg.brush()
+    .x(x2)
+    .on("brush", brushed);
+         
+var parseTime = d3.time.format("%B %Y").parse;
 
-bbOverview = {
-    x: margin.left,
-    y: 10,
-    w: width,
-    h: 80
-};
-
-bbDetail = {
-    x: margin.left,
-    y: 150,
-    w: width,
-    h: 400
-};
-
-dataSet = [];
-
-svg = d3.select("#visUN").append("svg").attr({
-    width: width + margin.left + margin.right,
-    height: height + margin.top + margin.bottom
-}).append("g").attr({
-        transform: "translate(" + margin.left + "," + margin.top + ")"
-    });
+ var line1 = d3.svg.line()
+        .x(function(d) { return x(d.date);})
+        .y(function(d) { return y(d.count);});
 
 
-d3.csv("unHealth.csv", function(data) {
-        var parseTime = d3.time.format("%B %Y").parse
+var line2 = d3.svg.line()
+        .x(function(d) { return x2(d.date);})
+        .y(function(d) { return y2(d.count);});
+var area = d3.svg.area()
+    .interpolate("linear")
+    .x(function(d) { return x(d.date); })
+    .y0(height)
+    .y1(function(d) { return y(d.count); });
 
-        
-        data.forEach(function(d) {
-            d.date = parseTime(d.date);
-            d.count = parseInt(d.count);
-        });
-        console.log(data);
-    createOverview(data);
-    createDetails(data);
+var area2 = d3.svg.area()
+    .interpolate("linear")
+    .x(function(d) { return x2(d.date); })
+    .y0(height2)
+    .y1(function(d) { return y2(d.count); });
 
-    brush = d3.svg.brush().x(xOverviewScale).on("brush", brushed);
-});
+var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom);
 
-createOverview = function (data) {
-    var xAxis, xScale, yAxis,  yScale;
-    overview = svg.append("g");
-    xScale = d3.time.scale().range([bbOverview.x, bbOverview.w]);  // define the right domain generically
-    yScale = d3.scale.linear().domain([0,300000]).range([bbOverview.h,0]);
-    xScale.domain(d3.extent(data, function(d) { return d.date; }));
+svg.append("defs").append("clipPath")
+    .attr("id", "clip")
+  .append("rect")
+    .attr("width", width)
+    .attr("height", height);
 
- var line = d3.svg.line()
-        .x(function(d) { return xScale(d.date);})
-        .y(function(d) { return yScale(d.count);});
-    
-    xAxis = d3.svg.axis()
-        .scale(xScale)
-        .orient("bottom");
+var focus = svg.append("g")
+    .attr("class", "focus")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    yAxis = d3.svg.axis()
-        .scale(yScale)
-        .orient("left");
+var context = svg.append("g")
+    .attr("class", "context")
+    .attr("transform", "translate(" + margin2.left + "," + margin2.top + ")");
 
-    overview.append("g")
+d3.csv("unHealth.csv", type, function(error, data) {
+
+
+  x.domain(d3.extent(data.map(function(d) { return d.date; })));
+  y.domain([0, d3.max(data.map(function(d) { return d.count; }))]);
+  x2.domain(x.domain());
+  y2.domain(y.domain());
+
+
+// normal stuff
+  focus.append("path")
+      .datum(data)
+      .attr("class", "area")
+      .attr("d", area);
+
+  focus.append("g")
       .attr("class", "x axis")
-      .attr("transform", "translate(0," + (bbOverview.h) + ")")
+      .attr("transform", "translate(0," + height + ")")
       .call(xAxis);
+ 
 
-    overview.append("g")
-      .attr("class", "y axis")
-      .attr("transform", "translate("+bbOverview.x+"," + 0+ ")")
-      .call(yAxis);
-
-  overview.append("path")
+  focus.append("path")
       .datum(data)
       .attr("class", "path overviewPath")
-      .attr("d", line);
+      .attr("d", line1);
 
-overview.selectAll('.point')
-    .data(data)
-    .enter()
-    .append("circle")
-    .attr("class", 'point')
-     .attr("r", 2)
-    .attr("cx", function(d){return xScale(d.date);})
-    .attr("cy", function(d){return yScale(d.count);})
-    .on('mouseover',   function(){d3.select(this).attr('r', 4);})
-    .on('mouseout', function(){d3.select(this).attr('r', 2);})
-    // .on('click', (d, i) -> console.log d, i)
-
-
-}
-
-createDetails = function(data){
-   var xAxis, xScale, yAxis,  yScale;
-   detail = svg.append("g");
-    xScale = d3.time.scale().range([bbDetail.x, bbDetail.w]);  // define the right domain generically
-    yScale = d3.scale.linear().domain([0,300000]).range([bbDetail.h,bbDetail.y]);
-    xScale.domain(d3.extent(data, function(d) { return d.date; }));
-
- var line = d3.svg.line()
-        .x(function(d) { return xScale(d.date);})
-        .y(function(d) { return yScale(d.count);});
-    
-    xAxis = d3.svg.axis()
-        .scale(xScale)
-        .orient("bottom");
-
-    yAxis = d3.svg.axis()
-        .scale(yScale)
-        .orient("left");
-
-    detail.append("g")
-      .attr("class", "x axis")
-      .attr("transform", "translate(0," + (bbDetail.h) + ")")
-      .call(xAxis);
-
-    detail.append("g")
+  focus.append("g")
       .attr("class", "y axis")
-      .attr("transform", "translate("+bbDetail.x+"," + 0+ ")")
       .call(yAxis);
 
-  detail.append("path")
-      .datum(data)
-      .attr("class", "path deailPath")
-      .attr("d", line);
-paths = detail.select("path.deailPath");
-
-detail.selectAll('.point')
+focus.selectAll('.point')
+    .append("g")
     .data(data)
     .enter()
     .append("circle")
     .attr("class", 'point')
      .attr("r", 2)
-    .attr("cx", function(d){return xScale(d.date);})
-    .attr("cy", function(d){return yScale(d.count);})
+    .attr("cx", function(d){return x(d.date);})
+    .attr("cy", function(d){return y(d.count);})
     .on('mouseover',   function(){d3.select(this).attr('r', 4);})
     .on('mouseout', function(){d3.select(this).attr('r', 2);})
 
-var area = d3.svg.area()
-    .x(function(d){return xScale(d.date);})
-    .y0(bbDetail.h)
-    .y1(function(d){return yScale(d.count);});
-    detail.append("path")
-        .datum(data)
-        .attr("class", "detailArea")
-        .attr("d",area);
-}
-var convertToInt = function(s) {
-    return parseInt(s.replace(/,/g, ""), 10);
-};
+  context.append("path")
+      .datum(data)
+      .attr("class", "path overviewPath")
+      .attr("d", line2);
 
+  context.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height2 + ")")
+      .call(xAxis2);
+
+  context.selectAll('.point')
+    .append("g")
+    .data(data)
+    .enter()
+    .append("circle")
+    .attr("class", 'point')
+     .attr("r", 2)
+    .attr("cx", function(d){return x2(d.date);})
+    .attr("cy", function(d){return y2(d.count);})
+    .on('mouseover',   function(){d3.select(this).attr('r', 4);})
+    .on('mouseout', function(){d3.select(this).attr('r', 2);})
+//end of normal stuff
+
+  context.append("g")
+      .attr("class", "x brush")
+      .call(brush)
+    .selectAll("rect")
+      .attr("y", -6)
+      .attr("height", height2 + 7);
+
+
+});
+
+function brushed() {
+  x.domain(brush.empty() ? x2.domain() : brush.extent());
+  focus.select(".area").attr("d", area);
+  focus.select(".x.axis").call(xAxis);
+  focus.select(".overviewPath").attr("d",line1);
+  focus.selectAll("circle").attr("cx", function(d){return x(d.date);})
+    .attr("cy", function(d){return y(d.count);});
+}
+
+function type(d) {
+  d.date = parseTime(d.date);
+  d.count = +d.count;
+  return d;
+}
