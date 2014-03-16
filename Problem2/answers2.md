@@ -1,0 +1,2 @@
+1. All the dataset we have looked so far had all the values. However, in this dataset we can see missing values. 
+2. (Done scrapping using python, but still attaching basic syntax for jquery scrapping). We first want to select the table by .find("table"). Then we can get the second element of the array of .find(tr) to get the second row. Also then we'd select only the td  (not th i.e. the head row values), by doing .find('td').
